@@ -4,12 +4,13 @@ import pandas as pd
 import math
 
 class dTree(object):
-    def __init__(self,data=None,a=True):
+    def __init__(self,data=None,a=True,c=0):
         self.left = None
         self.right = None
         self.data = data
         self.label = None
         self.isAt = a
+        self.count = c
 
 def bestAttribute(attributes,data):
 	return 0
@@ -96,13 +97,15 @@ def id3Algo(df,identifier,attributes):
         root = dTree()
         c1 = df.where(df[identifier]==1)[identifier].count()
         c0 = df.where(df[identifier]==0)[identifier].count()
+        if c1>c0:
+            root.data=1
+            root.count=c1
+        else:
+            root.data=0
+            root.count=c0
         #check to see if there are any attributes left to split on, return leaf node if nothing left after determing majority leader
         if(len(attributes)==0):
             root.isAt=False
-            if c1>c0:
-                root.data=1
-            else:
-                root.data=0
             return root
         mx=0.0
         mxVar = attributes[0]
@@ -116,10 +119,6 @@ def id3Algo(df,identifier,attributes):
         # if info gain is 1, we have a pure subset, return leaf node
         if(mx==1):
             root.isAt=False
-            if c1>c0:
-                root.data=1
-            else:
-                root.data=0
             return root
 
         attributes.remove(mxVar) # this is an inplace operation
@@ -127,123 +126,143 @@ def id3Algo(df,identifier,attributes):
         #case where there is no example in training set when current split takes 0 branch
         if(df.where(df[mxVar]==0)[identifier].count()==0):
             root.data=3
-            if c1>c0:
-                root.left = dTree(data=1,a=False)
-            else:
-                root.left = dTree(data=0,a=False)
             
         #case where there is no example when we split with 1 branch
         if(df.where(df[mxVar]==1)[identifier].count()==0):
-            root.data=4
-            if c1>c0:
-                root.right= dTree(data=1,a=False)
+            if(root.data==3):
+                root.data=5
             else:
-                root.right = dTree(data=0,a=False)
+                root.data=4
+
+        if(root.data ==1 or root.data ==0):
+            root.data=2
             
         #case when both splits result in no examples     
-        if(root.left is not None and root.right is not None):
+        if(root.data==5):
             root.isAt=False
             root.left=None
             root.right=None
             if c1>c0:
                 root.data=1
+                root.count=c1
             else:
                 root.data=0
+                root.count=c0
             return root
         else:
             root.label=mxVar
         #we either need to build the tree in both directions, or just to the right or left, or just return the leaf node.
-        if(root.data is None):
-            root.data = 2
-            root.left=id3Algo(df.where(df[mxVar]==1),identifier,attributes[:])
+        if(root.data==2):
+            root.left=id3Algo(df.where(df[mxVar]==0),identifier,attributes[:])
             root.right=id3Algo(df.where(df[mxVar]==1),identifier,attributes[:])
             return root
         elif(root.data==3):
+            if c1>c0:
+                root.left = dTree(data=1,a=False,c=c1)
+            else:
+                root.left = dTree(data=0,a=False,c=c0)
             root.right=id3Algo(df.where(df[mxVar]==1),identifier,attributes[:])
             return root
         elif(root.data==4):
-            root.left=id3Algo(df.where(df[mxVar]==1),identifier,attributes[:])
+            if c1>c0:
+                root.right= dTree(data=1,a=False,c=c1)
+            else:
+                root.right = dTree(data=0,a=False,c=c0)
+            root.left=id3Algo(df.where(df[mxVar]==0),identifier,attributes[:])
             return root
         else:
             return root
 
 def viAlgo(df,identifier,attributes):
-        mx = 0.0
         root = dTree()
-        if(len(attributes)==0):
-                c1 = df.where(df[identifier]==1)[identifier].count()
-                c0 = df.where(df[identifier]==0)[identifier].count()
-                root.isAt=False
-                if c1>c0:
-                        root.data=1
-                else:
-                        root.data=0
-                return root
-                
-        mxVar = attributes[0]
-        for x in attributes[:]:
-	        ent = infoGain(x,data.filter(items=[x,identifier]),identifier)
-                if(ent>mx):
-                        mx = ent
-                        mxVar = x
-
-        print("max info gain w/ entropy is %s with info gain of %f"%(mxVar,mx))
-        if(mx==1):
-                c1 = df.where(df[identifier]==1)[identifier].count()
-                c0 = df.where(df[identifier]==0)[identifier].count()
-                root.isAt=False
-                if c1>c0:
-                        root.data=1
-                else:
-                        root.data=0
-                return root
-        print mx
-        attributes.remove(mxVar)
-        l1=attributes[:]
- 
         c1 = df.where(df[identifier]==1)[identifier].count()
         c0 = df.where(df[identifier]==0)[identifier].count()
-        if(df.where(df[mxVar]==0)[identifier].count()==0):
-                root.data=3
-                if c1>c0:
-                        root.left=1
-                else:
-                        root.left=0
-        if(df.where(df[mxVar]==1)[identifier].count()==0):
-                root.data=4
-                if c1>c0:
-                        root.right=1
-                else:
-                        root.right=0
-
-        if(root.left is not None and root.right is not None):
-                root.isAt=False
-                root.data=5
-        if(root.data != 5):
-                root.label=mxVar
+        if c1>c0:
+            root.data=1
+            root.count=c1
         else:
-                root.label="noLabel"
-        if(root.data is None):
-                root.data = 2
-        if(root.left is None):
-                root.left=viAlgo(df.where(df[mxVar]==0),identifier,attributes[:])
-        if(root.right is None):
-                root.right=viAlgo(df.where(df[mxVar]==1),identifier,attributes[:])
-        print root.data
-        return root
+            root.data=0
+            root.count=c0
+        #check to see if there are any attributes left to split on, return leaf node if nothing left after determing majority leader
+        if(len(attributes)==0):
+            root.isAt=False
+            return root
+        mx=0.0
+        mxVar = attributes[0]
+        #determine variable of greatest info gain
+        for x in attributes[:]:
+	    ent = VI(x,data.filter(items=[x,identifier]),identifier)
+            if(ent>mx):
+                mx = ent
+                mxVar = x
+
+        # if info gain is 1, we have a pure subset, return leaf node
+        if(mx==1):
+            root.isAt=False
+            return root
+
+        attributes.remove(mxVar) # this is an inplace operation
+
+        #case where there is no example in training set when current split takes 0 branch
+        if(df.where(df[mxVar]==0)[identifier].count()==0):
+            root.data=3
+            
+        #case where there is no example when we split with 1 branch
+        if(df.where(df[mxVar]==1)[identifier].count()==0):
+            if(root.data==3):
+                root.data=5
+            else:
+                root.data=4
+
+        if(root.data ==1 or root.data ==0):
+            root.data=2
+            
+        #case when both splits result in no examples     
+        if(root.data==5):
+            root.isAt=False
+            root.left=None
+            root.right=None
+            if c1>c0:
+                root.data=1
+                root.count=c1
+            else:
+                root.data=0
+                root.count=c0
+            return root
+        else:
+            root.label=mxVar
+        #we either need to build the tree in both directions, or just to the right or left, or just return the leaf node.
+        if(root.data==2):
+            root.left=viAlgo(df.where(df[mxVar]==0),identifier,attributes[:])
+            root.right=viAlgo(df.where(df[mxVar]==1),identifier,attributes[:])
+            return root
+        elif(root.data==3):
+            if c1>c0:
+                root.left = dTree(data=1,a=False,c=c1)
+            else:
+                root.left = dTree(data=0,a=False,c=c0)
+            root.right=viAlgo(df.where(df[mxVar]==1),identifier,attributes[:])
+            return root
+        elif(root.data==4):
+            if c1>c0:
+                root.right= dTree(data=1,a=False,c=c1)
+            else:
+                root.right = dTree(data=0,a=False,c=c0)
+            root.left=viAlgo(df.where(df[mxVar]==0),identifier,attributes[:])
+            return root
+        else:
+            return root
 
 def printTree(root,dString):
-    if(root.data == 2):
-        printTree(root.left,dString+" | ")
-        printTree(root.right,dString+" | ")
-    elif(root.data==3):
+    if(root.left.isAt is True):
+        print(dString + root.label + " = 0 : ")
+        printTree(root.left,dString+"|")
+    else:
         print(dString + root.label + " = 0 : "+str(root.left.data))
-        printTree(root.right,dString+" | ")
-    elif(root.data==4):
-        printTree(root.left,dString+" | ")
-        print(dString + root.label + " = 1 : "+str(root.right.data))
-    elif(root.data==5):
-        print(dString + root.label + " = 0 : "+str(root.left.data))
+    if(root.right.isAt is True):
+        print(dString + root.label + " = 1 : ")
+        printTree(root.right,dString+"|")
+    else:
         print(dString + root.label + " = 1 : "+str(root.right.data))
 def testTree(root,vals):
     if(root.right is not None and vals[root.label]==1):
@@ -253,6 +272,36 @@ def testTree(root,vals):
     else:
         return root.data
 
+def pruneTreeS(root):
+    temp = root
+    pruneTree(temp)
+    return temp
+    
+def pruneTree(root):
+    if(root.left.isAt is False and root.right.isAt is False):
+        if(root.left.data==root.right.data):
+            root.data = root.left.data
+            root.count=root.left.count + root.right.count
+            #this shouldnt happen
+        else:
+            c1 = root.right.count
+            c0 = root.left.count
+            if(c1>c0):
+                root.data=root.right.data
+                root.count=c1
+            else:
+                root.data=root.left.data
+                root.count=c0
+        root.isAt=False
+        root.label=None
+        root.right = None
+        root.left =None
+    elif(root.left.isAt is False):
+        pruneTree(root.right)
+    else:
+        pruneTree(root.left)
+        
+    return  0    
 try:
 	trainingfile = sys.argv[1]
 	validationfile = sys.argv[2]
@@ -273,36 +322,40 @@ tot = vdf["Class"].count()
 vcdf = vdf.drop("Class",axis=1)
 
 y=id3Algo(data,"Class",attributes)
-temp = y
-print("Done with id3algo")
-print y
-#z=viAlgo(data,"Class",attributes)
-result=0
+z=viAlgo(data,"Class",attributes)
+
 correct = 0
+correct2 = 0
+correct3 = 0
+correct4 = 0
+
 while(i<tot):
     result=testTree(y,tdf.ix[i].to_dict())
+    result2= testTree(z,tdf.ix[i].to_dict())
+    result3=testTree(y,vdf.ix[i].to_dict())
+    result4= testTree(z,vdf.ix[i].to_dict())
     #print i
     #print tdf["Class"].ix[i]
     #print y.label
     if(tdf["Class"].ix[i]==result):
         correct = correct + 1
+    if(tdf["Class"].ix[i]==result2):
+        correct2 = correct2 + 1
+    if(vdf["Class"].ix[i]==result3):
+        correct3 = correct3 + 1
+    if(vdf["Class"].ix[i]==result4):
+        correct4 = correct4 + 1
     i=i+1
-    y = temp
 
 print("id3Algorithm accuracy on test data before pruning: %f"%(float(correct)/tot))
-i=0
-correct=0
-while(i<tot):
-    result=testTree(y,data.ix[i].to_dict())
-    #print data.ix[i].to_dict()
-    #print data["Class"].ix[i]
-    if(data["Class"].ix[i]==result):
-        correct = correct + 1
-    i=i+1
-    y= temp
-print("id3Algorithm accuracy on training data before pruning: %f"%(float(correct)/tot))
-
+print("viAlgorithm accuracy on test data before pruning: %f"%(float(correct2)/tot))
+print("id3Algorithm accuracy on valid data before pruning: %f"%(float(correct3)/tot))
+print("viAlgorithm accuracy on valid data before pruning: %f"%(float(correct4)/tot))
 i=0
 if(toPrint == "yes"):
         printTree(y,"")
         #printTree(z,"")
+if(prune == "yes"):
+    pruneTreeS(y)
+
+    #TODO make this a loop and continue based on accuracy improvements, reset y to improved tree each time, and make testTree / accuracy a function call

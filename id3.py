@@ -2,306 +2,341 @@ import sys
 import csv
 import pandas as pd
 import math
+from copy import deepcopy
 
 class dTree(object):
-    def __init__(self,data=None,a=True,c=0):
+    def __init__(self,datar=None,a=True,c=0):
         self.left = None
         self.right = None
-        self.data = data
+        self.data = datar
         self.label = None
         self.isAt = a
         self.count = c
-
-def bestAttribute(attributes,data):
-	return 0
-
-def id3(data,idclass,attributes):
-	return 0
-
+    def removeNodes(self,count,data):
+        self.isAt=False
+        self.data=data
+        self.count=count
+        self.left=None
+        self.right=None
+    def returnNodes(self,temp1,temp2,temp3):
+        self.label=temp1
+        self.right=temp2
+        self.left=temp3
+        self.isAt=True
 def parseData(filename):
-	attributes=[]
-	data=[]
-	f = open(filename,'r')
-	attributes=f.readline().split(",")
-	attributes[-1]=attributes[-1][:-1] #removing newline character
-	#print(attributes)
-	#for l in f.readlines():
-	#	print l
-	df = pd.read_csv(filename)
-	with open(filename,'rb') as csvFile:
-		reader = csv.reader(csvFile,delimiter=',')
-		for x in reader:
-			data.append(x)
-	return attributes,df
+    attributes=[]
+    data=[]
+    f = open(filename,'r')
+    attributes=f.readline().split(",")
+    attributes[-1]=attributes[-1][:-1] #removing newline character
+    df = pd.read_csv(filename)
+    with open(filename,'r') as csvFile:
+        reader = csv.reader(csvFile,delimiter=',')
+        for x in reader:
+            data.append(x)
+    return attributes,df
 
-def infoGain(target,data,identifier):
-        #calc entire set enropy
-	net1 = data.where(data[identifier]==1)[identifier].count()
-	net0 = data.where(data[identifier]==0)[identifier].count() 
-        totnet = net1+net0
+def infoGainS(df,identifier,attributes):
+
+    net1 = df.where(df[identifier]==1)[identifier].count()
+    net0 = df.where(df[identifier]==0)[identifier].count()
+    totnet = net1+net0
+    pnet1=float(net1)/totnet
+    pnet0=float(net0)/totnet
+    if(pnet1>0):
+        x1=-1*pnet1*math.log(pnet1,2)
+    else:
+        x1=0
+    if(pnet0>0):
+        y1=-1*pnet0*math.log(pnet0,2)
+    else:
+        y1=0
+    mx = 0
+    mxVar=""
+    resultnet = x1+y1
+    for x in attributes[:]:
+        h = entropies(x,df.filter(items=[x,identifier]),identifier,totnet)
+        ent = resultnet+h
+        if(ent>mx):
+            mx = ent
+            mxVar = x
+    #print (mxVar)
+    return mx, mxVar
+
+def entropies(target,df,identifier,totnet):
+
+    #now entropy of each variable in attribute TARGET
+    first = df.where(df[target]==1) # only where attribute is 1
+    second = df.where(df[target]==0) # only where attribute is 0
+    pos1 = first.where(df[identifier]==1)[identifier].count() #where attribute is 1 and class is 1
+    pos0 = first.where(df[identifier]==0)[identifier].count() # attribute 1 and class is 0
+    nul1 = second.where(df[identifier]==1)[identifier].count() # attribute 0 and class 1
+    nul0 = second.where(df[identifier]==0)[identifier].count() #attribute 0 and class 0
+    tot1 = pos1+pos0
+    tot2 = nul1+nul0
+    if(tot1>0):
+        p1=(float(pos1)/tot1)
+        p2=(float(pos0)/tot1)
+    else:
+        p1=0
+        p2=0
+    if(tot2>0):
+        n1=(float(nul1)/tot2)
+        n2=(float(nul0)/tot2)
+    else:
+        n1=0
+        n2=0
+    if(p1 == 0 and p2==0):
+        resultp=0
+    elif(p1==0):
+        resultp = -1*p2*math.log(p2,2)
+    elif(p2==0):
+        resultp = -1*p1*math.log(p1,2)
+    else:
+        resultp=-1*p1*math.log(p1,2) + -1*p2*math.log(p2,2)
+
+    if(n1==0 and n2==0):
+        resultn=0
+    elif(n1==0):
+        resultn = -1*n2*math.log(n2,2)
+    elif(n2==0):
+        resultn = -1*n1*math.log(n1,2)
+    else:
+        resultn = -1*n1*math.log(n1,2) + -1*n2*math.log(n2,2)
+    c1=float(tot1)/totnet
+    c0=float(tot2)/totnet
+    
+    x=  -1*(c1)*resultp + -1*(c0)*resultn #info gain
+    
+    return x
+
+def VIS(df,identifier,attributes):
+    #calc entire set vi
+    net1 = df.where(df[identifier]==1)[identifier].count()
+    net0 = df.where(df[identifier]==0)[identifier].count()
+    totnet = net1+net0
+    if(net1!=0 and net0!=0):
         pnet1=float(net1)/totnet
         pnet0=float(net0)/totnet
-        resultnet = -1*pnet1*math.log(pnet1,2) + -1*pnet0*math.log(pnet0,2)
-        #now etnropy of each variable in attribute TARGET
-	first = data.where(data[target]==1) # only where attribute is 1
-	second = data.where(data[target]==0) # only where attribute is 0
-	pos1 = first.where(data[identifier]==1)[identifier].count() #where attribute is 1 and class is 1
-	pos0 = first.where(data[identifier]==0)[identifier].count() # attribute 1 and class is 0
-	nul1 = second.where(data[identifier]==1)[identifier].count() # attribute 0 and class 1
-	nul0 = second.where(data[identifier]==0)[identifier].count() #attribute 0 and class 0
-        
-	tot1 = pos1+pos0
-	tot2 = nul1+nul0
+        vinet = (net1*net0)/(float(totnet)*totnet)
+    else:
+        vinet = 0
 
-	p1=(float(pos1)/tot1)
-	p2=(float(pos0)/tot1)
-	n1=(float(nul1)/tot2)
-	n2=(float(nul0)/tot2)
-	
-	resultp = -1*p1*math.log(p1,2) + -1*p2*math.log(p2,2)
-	resultn = -1*n1*math.log(n1,2) + -1*n2*math.log(n2,2)
-        c1=float(tot1)/totnet
-        c0=float(tot2)/totnet
+    mx=0.0
+    mxVar=""
+    for x in attributes[:]:
+        h = vimpur(x,df.filter(items=[x,identifier]),identifier,totnet)
+        ent = vinet+h
+        if(ent>mx):
+            mx = ent
+            mxVar = x
+    return mx, mxVar
+def vimpur(target,df,identifier,totnet):
 
-	return resultnet - (c1)*resultp - (c0)*resultn #info gain
+    first = df.where(df[target]==1) # only where attribute is 1
+    second = df.where(df[target]==0) # only where attribute is 0
+    pos1 = first.where(df[identifier]==1)[identifier].count() #where attribute is 1 and class is 1
+    pos0 = first.where(df[identifier]==0)[identifier].count() # attribute 1 and class is 0
+    nul1 = second.where(df[identifier]==1)[identifier].count() # attribute 0 and class 1
+    nul0 = second.where(df[identifier]==0)[identifier].count() #attribute 0 and class 0
 
-def VI(target,data,identifier):
-         #calc entire set vi
-	net1 = data.where(data[identifier]==1)[identifier].count()
-	net0 = data.where(data[identifier]==0)[identifier].count() 
-        totnet = net1+net0
-        pnet1=float(net1)/totnet
-        pnet0=float(net0)/totnet
-        vinet = net1*net0/(float(totnet)*totnet)
+    tot1 = pos1+pos0
+    tot2 = nul1+nul0
+    if(tot1!=0 and tot2!=0):
 
-        first = data.where(data[target]==1) # only where attribute is 1
-	second = data.where(data[target]==0) # only where attribute is 0
-	pos1 = first.where(data[identifier]==1)[identifier].count() #where attribute is 1 and class is 1
-	pos0 = first.where(data[identifier]==0)[identifier].count() # attribute 1 and class is 0
-	nul1 = second.where(data[identifier]==1)[identifier].count() # attribute 0 and class 1
-	nul0 = second.where(data[identifier]==0)[identifier].count() #attribute 0 and class 0
-        
-	tot1 = pos1+pos0
-	tot2 = nul1+nul0
-
-	p1=(float(tot1)/totnet)
-	n1=(float(tot2)/totnet)
-        
+        p1=(float(tot1)/totnet)
+        n1=(float(tot2)/totnet)
         resultp = pos1*pos0/(float(tot1)*tot1)
         resultn = nul1*nul0/(float(tot2)*tot2)
 
-        return vinet - p1*resultp - n1*resultn
+        return -1*p1*resultp + -1*n1*resultn
+    elif(tot1==0):
+        n1=(float(tot2)/totnet)
+        resultn = nul1*nul0/(float(tot2)*tot2)
 
+        return -1*n1*resultn
+    elif(tot2==0):
+        p1=(float(tot1)/totnet)
+        resultp = pos1*pos0/(float(tot1)*tot1)
 
-def id3Algo(df,identifier,attributes):
-        root = dTree()
-        c1 = df.where(df[identifier]==1)[identifier].count()
-        c0 = df.where(df[identifier]==0)[identifier].count()
-        if c1>c0:
-            root.data=1
-            root.count=c1
-        else:
-            root.data=0
-            root.count=c0
+        return -1*p1*resultp
+    else:
+        return 0
+
+def id3Algo(df,identifier,attributes,dt,ct,IDorVI):
+    df=df.dropna()
+    root = dTree()
+    c1 = df.where(df[identifier]==1)[identifier].count()
+    c0 = df.where(df[identifier]==0)[identifier].count()
+    if(c1==0 and c0 == 0):
+        #print("no examples")
+        root.data = dt
+        root.count = ct
+        root.isAt=False
+        return root
+    elif(c1==0):
+        root.data = 0
+        root.count = c0
+        root.isAt=False
+        return root
+    elif(c0==0):
+        root.data = 1
+        root.count = c1
+        root.isAt=False
+        return root
+    elif c1>c0:
+        root.data=1
+        root.count=c1
+    else:
+        root.data=0
+        root.count=c0
+
         #check to see if there are any attributes left to split on, return leaf node if nothing left after determing majority leader
-        if(len(attributes)==0):
-            root.isAt=False
-            return root
-        mx=0.0
-        mxVar = attributes[0]
-        #determine variable of greatest info gain
-        for x in attributes[:]:
-	    ent = infoGain(x,data.filter(items=[x,identifier]),identifier)
-            if(ent>mx):
-                mx = ent
-                mxVar = x
+    if(len(attributes)==0):
+        root.isAt=False
+        #print("no more attributes")
+        return root
 
-        # if info gain is 1, we have a pure subset, return leaf node
-        if(mx==1):
-            root.isAt=False
+    #determine variable of greatest info gain
+    if(IDorVI is True):
+        mx,mxVar = infoGainS(df,identifier,attributes[:])
+    else:
+        mx, mxVar= VIS(df,identifier,attributes[:])
+    if(mx==0):
+            root.isAt = False
             return root
+    attributes.remove(mxVar) # this is an inplace operation
 
-        attributes.remove(mxVar) # this is an inplace operation
-
-        #case where there is no example in training set when current split takes 0 branch
-        if(df.where(df[mxVar]==0)[identifier].count()==0):
-            root.data=3
-            
-        #case where there is no example when we split with 1 branch
-        if(df.where(df[mxVar]==1)[identifier].count()==0):
-            if(root.data==3):
-                root.data=5
-            else:
-                root.data=4
-
-        if(root.data ==1 or root.data ==0):
-            root.data=2
-            
-        #case when both splits result in no examples     
-        if(root.data==5):
-            root.isAt=False
-            root.left=None
-            root.right=None
-            if c1>c0:
-                root.data=1
-                root.count=c1
-            else:
-                root.data=0
-                root.count=c0
-            return root
-        else:
-            root.label=mxVar
-        #we either need to build the tree in both directions, or just to the right or left, or just return the leaf node.
-        if(root.data==2):
-            root.left=id3Algo(df.where(df[mxVar]==0),identifier,attributes[:])
-            root.right=id3Algo(df.where(df[mxVar]==1),identifier,attributes[:])
-            return root
-        elif(root.data==3):
-            if c1>c0:
-                root.left = dTree(data=1,a=False,c=c1)
-            else:
-                root.left = dTree(data=0,a=False,c=c0)
-            root.right=id3Algo(df.where(df[mxVar]==1),identifier,attributes[:])
-            return root
-        elif(root.data==4):
-            if c1>c0:
-                root.right= dTree(data=1,a=False,c=c1)
-            else:
-                root.right = dTree(data=0,a=False,c=c0)
-            root.left=id3Algo(df.where(df[mxVar]==0),identifier,attributes[:])
-            return root
-        else:
-            return root
-
-def viAlgo(df,identifier,attributes):
-        root = dTree()
-        c1 = df.where(df[identifier]==1)[identifier].count()
-        c0 = df.where(df[identifier]==0)[identifier].count()
-        if c1>c0:
-            root.data=1
-            root.count=c1
-        else:
-            root.data=0
-            root.count=c0
-        #check to see if there are any attributes left to split on, return leaf node if nothing left after determing majority leader
-        if(len(attributes)==0):
-            root.isAt=False
-            return root
-        mx=0.0
-        mxVar = attributes[0]
-        #determine variable of greatest info gain
-        for x in attributes[:]:
-	    ent = VI(x,data.filter(items=[x,identifier]),identifier)
-            if(ent>mx):
-                mx = ent
-                mxVar = x
-
-        # if info gain is 1, we have a pure subset, return leaf node
-        if(mx==1):
-            root.isAt=False
-            return root
-
-        attributes.remove(mxVar) # this is an inplace operation
-
-        #case where there is no example in training set when current split takes 0 branch
-        if(df.where(df[mxVar]==0)[identifier].count()==0):
-            root.data=3
-            
-        #case where there is no example when we split with 1 branch
-        if(df.where(df[mxVar]==1)[identifier].count()==0):
-            if(root.data==3):
-                root.data=5
-            else:
-                root.data=4
-
-        if(root.data ==1 or root.data ==0):
-            root.data=2
-            
-        #case when both splits result in no examples     
-        if(root.data==5):
-            root.isAt=False
-            root.left=None
-            root.right=None
-            if c1>c0:
-                root.data=1
-                root.count=c1
-            else:
-                root.data=0
-                root.count=c0
-            return root
-        else:
-            root.label=mxVar
-        #we either need to build the tree in both directions, or just to the right or left, or just return the leaf node.
-        if(root.data==2):
-            root.left=viAlgo(df.where(df[mxVar]==0),identifier,attributes[:])
-            root.right=viAlgo(df.where(df[mxVar]==1),identifier,attributes[:])
-            return root
-        elif(root.data==3):
-            if c1>c0:
-                root.left = dTree(data=1,a=False,c=c1)
-            else:
-                root.left = dTree(data=0,a=False,c=c0)
-            root.right=viAlgo(df.where(df[mxVar]==1),identifier,attributes[:])
-            return root
-        elif(root.data==4):
-            if c1>c0:
-                root.right= dTree(data=1,a=False,c=c1)
-            else:
-                root.right = dTree(data=0,a=False,c=c0)
-            root.left=viAlgo(df.where(df[mxVar]==0),identifier,attributes[:])
-            return root
-        else:
-            return root
+    root.label=mxVar
+    root.left=id3Algo(df.where(df[mxVar]==0),identifier,attributes[:],root.data,root.count,IDorVI)
+    root.right=id3Algo(df.where(df[mxVar]==1),identifier,attributes[:],root.data,root.count,IDorVI)
+    return root
 
 def printTree(root,dString):
     if(root.left.isAt is True):
-        print(dString + root.label + " = 0 : ")
-        printTree(root.left,dString+"|")
+        print(dString + root.label + " = 0 :")
+        printTree(root.left,dString+"| ")
     else:
-        print(dString + root.label + " = 0 : "+str(root.left.data))
+        print(dString + root.label + " = 0 :"+str(root.left.data))
     if(root.right.isAt is True):
-        print(dString + root.label + " = 1 : ")
-        printTree(root.right,dString+"|")
+        print(dString + root.label + " = 1 :")
+        printTree(root.right,dString+"| ")
     else:
         print(dString + root.label + " = 1 : "+str(root.right.data))
-def testTree(root,vals):
-    if(root.right is not None and vals[root.label]==1):
-        return testTree(root.right,vals)
-    elif(root.left is not None and vals[root.label]==0):
-        return testTree(root.left,vals)
-    else:
-        return root.data
 
-def pruneTreeS(root):
-    temp = root
-    pruneTree(temp)
-    return temp
-    
-def pruneTree(root):
+def testTree(rooter,valss):
+    #print (rooter.label + " heading to the "+ str(valss[rooter.label]))
+    if(rooter is None):
+        print ("wtf")
+    if((rooter.right.isAt is True) and valss[rooter.label]==1):
+        return testTree(rooter.right,valss)
+    elif((rooter.right.isAt is False) and valss[rooter.label]==1):
+        return rooter.right.data
+    elif((rooter.left.isAt is True) and valss[rooter.label]==0):
+        return testTree(rooter.left,valss)
+    elif((rooter.left.isAt is False) and valss[rooter.label]==0):
+        return rooter.left.data
+    else:
+        return rooter.data
+def accuracyTest(head,dftest):
+    ij=0
+    tottest = dftest["Class"].count()
+    correcttest=0
+    temptest = (head)
+    while(ij<tottest):
+        tt = dftest.ix[ij].to_dict()
+        result=testTree(temptest,tt)
+        if(result!=1 and result!=0):
+            print (result)
+        if(int(tt["Class"]) == int(result)):
+            correcttest = correcttest + 1
+        #else:
+            #print ("incorrect! result is %d while actual is %d at row %d"%(result,tt["Class"],ij) + "with path" + str(tt))
+        ij=ij+1
+    return float(correcttest)/ij
+
+def pruneTreeS(root2,dfprune):
+    #print(root2)
+    stack=[root2]
+    store=[]
+    i = 0
+    noImprov=True
+    while (stack):
+        root=stack.pop()
+        if(root.left.isAt is True and root.right.isAt is True): # go
+            stack.append(root.left)
+            stack.append(root.right)
+        elif(root.left.isAt is False and root.right.isAt is False):
+            ogAc = accuracyTest(root2,dfprune)
+            if(root.left.data==root.right.data):
+                d = root.left.data
+                c=root.left.count + root.right.count
+            else:
+                c1 = root.right.count
+                c0 = root.left.count
+                if(c1>c0):
+                    d=root.right.data
+                    c=c1
+                else:
+                    d=root.left.data
+                    c=c0
+            temp1=root.label
+            temp2=root.right
+            temp3=root.left
+            root.removeNodes(c,d)
+            postAc = accuracyTest(root2,dfprune)
+            if(ogAc<postAc):
+                hol=2
+                noImprov=False
+            else:
+                root.returnNodes(temp1,temp2,temp3)
+
+        elif(root.left.isAt is False):
+            stack.append(root.right)
+        else:
+            stack.append(root.left)
+        i=i+1
+    return noImprov
+
+def pruneTreeSR(root2,dfprune):
+    tempr = root2
+    pruneTreeR(root2,tempr,dfprune)
+    return True
+
+def pruneTreeR(root2,root,dfprune):
+    if(root.left.isAt is True and root.right.isAt is True):
+        pruneTreeR(root2,root.left,dfprune)
+        pruneTreeR(root2,root.right,dfprune)
+    elif(root.left.isAt is True):
+        pruneTreeR(root2,root.left,dfprune)
+    elif(root.right.isAt is True):
+        pruneTreeR(root2,root.right,dfprune)
     if(root.left.isAt is False and root.right.isAt is False):
+        ogAc = accuracyTest(root2,dfprune)
         if(root.left.data==root.right.data):
-            root.data = root.left.data
-            root.count=root.left.count + root.right.count
-            #this shouldnt happen
+            d = root.left.data
+            c=root.left.count + root.right.count
         else:
             c1 = root.right.count
             c0 = root.left.count
             if(c1>c0):
-                root.data=root.right.data
-                root.count=c1
+                d=root.right.data
+                c=c1
             else:
-                root.data=root.left.data
-                root.count=c0
-        root.isAt=False
-        root.label=None
-        root.right = None
-        root.left =None
-    elif(root.left.isAt is False):
-        pruneTree(root.right)
-    else:
-        pruneTree(root.left)
+                d=root.left.data
+                c=c0
+        temp1=root.label
+        temp2=root.right
+        temp3=root.left
+        root.removeNodes(c,d)
+        postAc = accuracyTest(root2,dfprune)
+        if(ogAc<postAc):
+            hol=2
+            noImprov=False
+        else:
+            root.returnNodes(temp1,temp2,temp3)
         
-    return  0    
+
 try:
 	trainingfile = sys.argv[1]
 	validationfile = sys.argv[2]
@@ -312,50 +347,43 @@ except:
 	print("Error passing in arguments, make sure to pass in all arguments")
 	sys.exit(1)
 
-print("args passed in successfully")
-attributes,data=parseData(trainingfile)
-attributes,vdf=parseData(validationfile)
-attributes,tdf=parseData(testfile)
-attributes=attributes[:-1] #removing class from attributes
-i = 0
-tot = vdf["Class"].count()
-vcdf = vdf.drop("Class",axis=1)
+def main():
+    #print("args passed in successfully")
+    attributes,dftrain=parseData(trainingfile)
+    attributes=attributes[:-1] #removing class from attributes
+    attributes2=attributes
+    iGT=id3Algo(dftrain,"Class",attributes,0,600,True)
+    vIT=id3Algo(dftrain,"Class",attributes2,0,600,False)
+    #print("done with alg")
+    idc2,validdf=parseData(validationfile)
+    idc1,testdf=parseData(testfile)
+    i = 0
+    acid3 = accuracyTest(iGT,validdf)
 
-y=id3Algo(data,"Class",attributes)
-z=viAlgo(data,"Class",attributes)
+    print("InfoGainAlgorithm accuracy on valid data before pruning: %f"%(acid3))
+    print("InfoGainAlgorithm accuracy on test data before pruning: %f"%(accuracyTest(iGT,testdf)))
+    print("VIAlgorithm accuracy on valid data before pruning: %f"%(accuracyTest(vIT,validdf)))
+    print("VIAlgorithm accuracy on test data before pruning: %f"%(accuracyTest(vIT,testdf)))
+ 
+    if(toPrint == "yes"):
+            printTree(y,"")
+            printTree(z,"")
+    if(prune == "yes"):
+        while True:
+            x=pruneTreeSR(iGT,validdf)
+            if(x is True):
+                break
+        while True:
+            x=pruneTreeSR(vIT,validdf)
+            if(x is True):
+                break
+        print("InfoGainAlgorithm accuracy on valid data after pruning: %f"%(accuracyTest(iGT,validdf)))
+        print("viAlgorithm accuracy on valid data after pruning: %f"%(accuracyTest(vIT,validdf)))
+        print("InfoGainAlgorithm accuracy on test data after pruning: %f"%(accuracyTest(iGT,testdf)))
+        print("viAlgorithm accuracy on test data after pruning: %f"%(accuracyTest(vIT,testdf)))
+        if(toPrint=="yes"):
+            printTree(y,"")
+            printTree(z,"")
+main()
+    
 
-correct = 0
-correct2 = 0
-correct3 = 0
-correct4 = 0
-
-while(i<tot):
-    result=testTree(y,tdf.ix[i].to_dict())
-    result2= testTree(z,tdf.ix[i].to_dict())
-    result3=testTree(y,vdf.ix[i].to_dict())
-    result4= testTree(z,vdf.ix[i].to_dict())
-    #print i
-    #print tdf["Class"].ix[i]
-    #print y.label
-    if(tdf["Class"].ix[i]==result):
-        correct = correct + 1
-    if(tdf["Class"].ix[i]==result2):
-        correct2 = correct2 + 1
-    if(vdf["Class"].ix[i]==result3):
-        correct3 = correct3 + 1
-    if(vdf["Class"].ix[i]==result4):
-        correct4 = correct4 + 1
-    i=i+1
-
-print("id3Algorithm accuracy on test data before pruning: %f"%(float(correct)/tot))
-print("viAlgorithm accuracy on test data before pruning: %f"%(float(correct2)/tot))
-print("id3Algorithm accuracy on valid data before pruning: %f"%(float(correct3)/tot))
-print("viAlgorithm accuracy on valid data before pruning: %f"%(float(correct4)/tot))
-i=0
-if(toPrint == "yes"):
-        printTree(y,"")
-        #printTree(z,"")
-if(prune == "yes"):
-    pruneTreeS(y)
-
-    #TODO make this a loop and continue based on accuracy improvements, reset y to improved tree each time, and make testTree / accuracy a function call

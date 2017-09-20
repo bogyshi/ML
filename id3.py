@@ -359,31 +359,47 @@ def main():
     idc1,testdf=parseData(testfile)
     i = 0
     acid3 = accuracyTest(iGT,validdf)
-
-    print("InfoGainAlgorithm accuracy on valid data before pruning: %f"%(acid3))
-    print("InfoGainAlgorithm accuracy on test data before pruning: %f"%(accuracyTest(iGT,testdf)))
-    print("VIAlgorithm accuracy on valid data before pruning: %f"%(accuracyTest(vIT,validdf)))
-    print("VIAlgorithm accuracy on test data before pruning: %f"%(accuracyTest(vIT,testdf)))
+    #print("InfoGainAlgorithm accuracy on test data before pruning: %f"%(accuracyTest(iGT,testdf)))
+    #print("VIAlgorithm accuracy on test data before pruning: %f"%(accuracyTest(vIT,testdf)))
+    h1train=accuracyTest(iGT,dftrain)
+    h1valid=accuracyTest(iGT,validdf)
+    h1test=accuracyTest(iGT,testdf)
+    nph1 = "H1 NP Training %0.2f\nH1 NP Validation %0.2f\nH1 NP Test %0.2f"%(h1train,h1valid,h1test)
+    print(nph1)
+    if(prune=="yes"):
+        pruneTreeSR(iGT,validdf)
+        h1train=accuracyTest(iGT,dftrain)
+        h1valid=accuracyTest(iGT,validdf)
+        h1test=accuracyTest(iGT,testdf)
+        ph1 = "H1 P Training %0.2f\nH1 P Validation %0.2f\nH1 P Test %0.2f"%(h1train,h1valid,h1test)
+        print(ph1)
+    h2train=accuracyTest(vIT,dftrain)
+    h2valid=accuracyTest(vIT,validdf)
+    h2test=accuracyTest(vIT,testdf)
+    nph2 = "H2 NP Training %0.2f\nH2 NP Validation %0.2f\nH2 NP Test %0.2f"%(h2train,h2valid,h2test)
+    print(nph2)
+    if(prune=="yes"):
+        pruneTreeSR(vIT,validdf)
+        h1train=accuracyTest(vIT,dftrain)
+        h1valid=accuracyTest(vIT,validdf)
+        h1test=accuracyTest(vIT,testdf)
+        ph2 = "H2 P Training %0.2f\nH2 P Validation %0.2f\nH2 P Test %0.2f"%(h1train,h1valid,h1test)
+        print(ph2)
+    #print("InfoGainAlgorithm accuracy on test data before pruning: %f"%(accuracyTest(iGT,testdf)))
+    #print("VIAlgorithm accuracy on test data before pruning: %f"%(accuracyTest(vIT,testdf)))
  
     if(toPrint == "yes"):
-            printTree(y,"")
-            printTree(z,"")
-    if(prune == "yes"):
-        while True:
-            x=pruneTreeSR(iGT,validdf)
-            if(x is True):
-                break
-        while True:
-            x=pruneTreeSR(vIT,validdf)
-            if(x is True):
-                break
-        print("InfoGainAlgorithm accuracy on valid data after pruning: %f"%(accuracyTest(iGT,validdf)))
-        print("viAlgorithm accuracy on valid data after pruning: %f"%(accuracyTest(vIT,validdf)))
+            printTree(iGT,"")
+            print("H1 tree /\, H2 Tree \/")
+            printTree(vIT,"")
+    '''if(prune == "yes"):
+        x=pruneTreeSR(iGT,validdf)
+        x=pruneTreeSR(vIT,validdf)
         print("InfoGainAlgorithm accuracy on test data after pruning: %f"%(accuracyTest(iGT,testdf)))
         print("viAlgorithm accuracy on test data after pruning: %f"%(accuracyTest(vIT,testdf)))
         if(toPrint=="yes"):
             printTree(y,"")
-            printTree(z,"")
+            printTree(z,"")'''
 main()
     
 

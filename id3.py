@@ -255,49 +255,6 @@ def accuracyTest(head,dftest):
         ij=ij+1
     return float(correcttest)/ij
 
-def pruneTreeS(root2,dfprune):
-    #print(root2)
-    stack=[root2]
-    store=[]
-    i = 0
-    noImprov=True
-    while (stack):
-        root=stack.pop()
-        if(root.left.isAt is True and root.right.isAt is True): # go
-            stack.append(root.left)
-            stack.append(root.right)
-        elif(root.left.isAt is False and root.right.isAt is False):
-            ogAc = accuracyTest(root2,dfprune)
-            if(root.left.data==root.right.data):
-                d = root.left.data
-                c=root.left.count + root.right.count
-            else:
-                c1 = root.right.count
-                c0 = root.left.count
-                if(c1>c0):
-                    d=root.right.data
-                    c=c1
-                else:
-                    d=root.left.data
-                    c=c0
-            temp1=root.label
-            temp2=root.right
-            temp3=root.left
-            root.removeNodes(c,d)
-            postAc = accuracyTest(root2,dfprune)
-            if(ogAc<postAc):
-                hol=2
-                noImprov=False
-            else:
-                root.returnNodes(temp1,temp2,temp3)
-
-        elif(root.left.isAt is False):
-            stack.append(root.right)
-        else:
-            stack.append(root.left)
-        i=i+1
-    return noImprov
-
 def pruneTreeSR(root2,dfprune):
     tempr = root2
     pruneTreeR(root2,tempr,dfprune)
